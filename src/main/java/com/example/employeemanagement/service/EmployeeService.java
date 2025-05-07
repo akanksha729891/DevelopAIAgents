@@ -1,0 +1,68 @@
+package com.example.employeemanagement.service;
+
+import com.example.employeemanagement.dto.EmployeeDto;
+import com.example.employeemanagement.model.Employee;
+import com.example.employeemanagement.repository.EmployeeRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+
+@Service
+public class EmployeeService {
+
+    @Autowired
+    private EmployeeRepository employeeRepository;
+
+    public List<Employee> getAllEmployees(int page, int size, String sortBy) {
+        return employeeRepository.findAll(page, size, sortBy);
+    }
+    
+    public long countEmployees() {
+        return employeeRepository.count();
+    }
+
+    public Employee getEmployeeById(Long id) {
+        return employeeRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found"));
+    }
+
+    public Employee createEmployee(EmployeeDto employeeDto) {
+        if (employeeRepository.existsByEmail(employeeDto.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists");
+        }
+
+        Employee employee = new Employee();
+        updateEmployeeFromDto(employee, employeeDto);
+        return employeeRepository.save(employee);
+    }
+
+    public Employee updateEmployee(Long id, EmployeeDto employeeDto) {
+        Employee employee = getEmployeeById(id);
+        
+        if (!employee.getEmail().equals(employeeDto.getEmail()) && 
+            employeeRepository.existsByEmail(employeeDto.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists");
+        }
+
+        updateEmployeeFromDto(employee, employeeDto);
+        return employeeRepository.save(employee);
+    }
+
+    public void deleteEmployee(Long id) {
+        if (!employeeRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found");
+        }
+        employeeRepository.deleteById(id);
+    }
+
+    private void updateEmployeeFromDto(Employee employee, EmployeeDto dto) {
+        employee.setFirstName(dto.getFirstName());
+        employee.setLastName(dto.getLastName());
+        employee.setEmail(dto.getEmail());
+        employee.setPosition(dto.getPosition());
+        employee.setSalary(dto.getSalary());
+    }
+}
