@@ -1,0 +1,68 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up JDK 8
+      uses: actions/setup-java@v3
+      with:
+        java-version: '8'
+        distribution: 'temurin'
+        cache: maven
+    
+    - name: Build with Maven
+      run: mvn -B package --file pom.xml
+    
+    - name: Run tests
+      run: mvn test
+    
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-jar
+        path: target/*.jar
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - uses: actions/download-artifact@v3
+      with:
+        name: app-jar
+        path: target/
+    
+    # Example deployment to a server via SSH
+    # Uncomment and configure when ready to deploy
+    # - name: Deploy to production server
+    #   uses: appleboy/ssh-action@master
+    #   with:
+    #     host: ${{ secrets.HOST }}
+    #     username: ${{ secrets.USERNAME }}
+    #     key: ${{ secrets.SSH_PRIVATE_KEY }}
+    #     script: |
+    #       mkdir -p /opt/app
+    #       cp ~/target/*.jar /opt/app/app.jar
+    #       sudo systemctl restart myapp
+    
+    # Example deployment to Heroku
+    # Uncomment and configure when ready to deploy to Heroku
+    # - name: Deploy to Heroku
+    #   uses: akhileshns/heroku-deploy@v3.12.12
+    #   with:
+    #     heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+    #     heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
+    #     heroku_email: ${{ secrets.HEROKU_EMAIL }}
+    #     justlogin: true
