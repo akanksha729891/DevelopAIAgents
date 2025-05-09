@@ -7,6 +7,10 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -22,16 +26,21 @@ jobs:
         cache: maven
     
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: |
+        chmod +x mvnw
+        ./mvnw -B package --file pom.xml
     
     - name: Run tests
-      run: mvn test
+      run: ./mvnw test
     
     - name: Upload build artifact
+      if: success()
       uses: actions/upload-artifact@v3
       with:
         name: app-jar
         path: target/*.jar
+        if-no-files-found: error
+        retention-days: 5
 
   deploy:
     needs: build-and-test
@@ -39,30 +48,13 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     
     steps:
+    - uses: actions/checkout@v3
+    
     - uses: actions/download-artifact@v3
       with:
         name: app-jar
         path: target/
     
-    # Example deployment to a server via SSH
-    # Uncomment and configure when ready to deploy
-    # - name: Deploy to production server
-    #   uses: appleboy/ssh-action@master
-    #   with:
-    #     host: ${{ secrets.HOST }}
-    #     username: ${{ secrets.USERNAME }}
-    #     key: ${{ secrets.SSH_PRIVATE_KEY }}
-    #     script: |
-    #       mkdir -p /opt/app
-    #       cp ~/target/*.jar /opt/app/app.jar
-    #       sudo systemctl restart myapp
-    
-    # Example deployment to Heroku
-    # Uncomment and configure when ready to deploy to Heroku
-    # - name: Deploy to Heroku
-    #   uses: akhileshns/heroku-deploy@v3.12.12
-    #   with:
-    #     heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
-    #     heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
-    #     heroku_email: ${{ secrets.HEROKU_EMAIL }}
-    #     justlogin: true
+    - name: Display structure of downloaded files
+      run: ls -R
+      working-directory: target/
